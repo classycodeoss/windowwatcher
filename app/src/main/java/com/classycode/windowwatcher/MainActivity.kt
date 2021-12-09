@@ -1,4 +1,4 @@
-package com.classycode.office
+package com.classycode.windowwatcher
 
 import android.os.Bundle
 import android.os.Handler
@@ -24,10 +24,10 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.classycode.office.ui.theme.GrayTranslucent
-import com.classycode.office.ui.theme.GreenTranslucent
-import com.classycode.office.ui.theme.OfficeTheme
-import com.classycode.office.ui.theme.RedTranslucent
+import com.classycode.windowwatcher.ui.theme.GrayTranslucent
+import com.classycode.windowwatcher.ui.theme.GreenTranslucent
+import com.classycode.windowwatcher.ui.theme.OfficeTheme
+import com.classycode.windowwatcher.ui.theme.RedTranslucent
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
 import org.json.JSONObject

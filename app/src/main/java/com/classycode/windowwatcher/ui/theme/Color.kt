@@ -1,4 +1,4 @@
-package com.classycode.office.ui.theme
+package com.classycode.windowwatcher.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

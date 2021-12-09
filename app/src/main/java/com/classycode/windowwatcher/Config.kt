@@ -1,4 +1,4 @@
-package com.classycode.office
+package com.classycode.windowwatcher
 
 class Config {
 
