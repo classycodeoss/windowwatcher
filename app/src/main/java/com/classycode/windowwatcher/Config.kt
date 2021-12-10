@@ -14,7 +14,9 @@ class Config {
         // the EMS sensors
         val devices = listOf(
             // a list of device ids
-        )
+            "your-device-id-1",
+            "your-device-id-2"
+            )
 
         // the uplink topics
         val topics: List<String> =
