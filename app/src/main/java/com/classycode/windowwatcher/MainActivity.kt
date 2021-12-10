@@ -40,13 +40,13 @@ class MainActivity : ComponentActivity() {
     }
 
     // UI state
-    private val connectedState = mutableStateOf(false)
-    private val statusMessageState = mutableStateOf("initializing")
-    private val window1OpenState = mutableStateOf<Boolean?>(null)
-    private val window2OpenState = mutableStateOf<Boolean?>(null)
-    private val window3OpenState = mutableStateOf<Boolean?>(null)
-    private val window4OpenState = mutableStateOf<Boolean?>(null)
-    private val messageCountState = mutableStateOf(0)
+    private val uiState = mutableStateOf(
+        UiState(
+            connected = false, statusMessage = "Initial",
+            window1Open = null, window2Open = null, window3Open = null, window4Open = null,
+            messageCount = 0
+        )
+    )
 
     private lateinit var mqttClient: MqttAndroidClient
     private lateinit var mainHandler: Handler
@@ -82,28 +82,44 @@ class MainActivity : ComponentActivity() {
                     }
                     val sensorPayload = decodedPayloadObject.toString()
                     Log.i(TAG, "messageArrived: deviceId=$deviceId, payload=$sensorPayload")
+
+                    val newMessageCount = uiState.value.messageCount + 1
                     when (deviceId) {
                         Config.devices[0] -> {
-                            window1OpenState.value = decodedPayloadObject.getInt("digital") == 0
+                            uiState.value = uiState.value.copy(
+                                window1Open = decodedPayloadObject.getInt("digital") == 0,
+                                messageCount = newMessageCount
+                            )
                         }
                         Config.devices[1] -> {
-                            window2OpenState.value = decodedPayloadObject.getInt("digital") == 0
+                            uiState.value = uiState.value.copy(
+                                window2Open = decodedPayloadObject.getInt("digital") == 0,
+                                messageCount = newMessageCount
+                            )
                         }
                         Config.devices[2] -> {
-                            window3OpenState.value = decodedPayloadObject.getInt("digital") == 0
+                            uiState.value = uiState.value.copy(
+                                window3Open = decodedPayloadObject.getInt("digital") == 0,
+                                messageCount = newMessageCount
+                            )
                         }
                         Config.devices[3] -> {
-                            window4OpenState.value = decodedPayloadObject.getInt("digital") == 0
+                            uiState.value = uiState.value.copy(
+                                window4Open = decodedPayloadObject.getInt("digital") == 0,
+                                messageCount = newMessageCount
+                            )
                         }
                     }
-                    messageCountState.value++
                 }
             }
 
             override fun connectionLost(cause: Throwable?) {
                 Log.e(TAG, "connectionLost")
-                statusMessageState.value = "connection lost"
-                connectedState.value = false
+
+                uiState.value = uiState.value.copy(
+                    statusMessage = "Connection lost",
+                    connected = false
+                )
 
                 // automatic reconnect (the built-in reconnect doesn't seem to work?)
                 connect()
@@ -112,25 +128,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             OfficeTheme {
-                val statusMessage by statusMessageState
-                val connected by connectedState
-                val window1Open by window1OpenState
-                val window2Open by window2OpenState
-                val window3Open by window3OpenState
-                val window4Open by window4OpenState
-                val messageCount by messageCountState
+                val uiState by uiState
                 Surface(color = MaterialTheme.colors.background) {
                     Box(modifier = Modifier.fillMaxSize()) {
-
-                        MainContent(
-                            statusMessage = statusMessage,
-                            connected = connected,
-                            messageCount = messageCount,
-                            window1Open = window1Open,
-                            window2Open = window2Open,
-                            window3Open = window3Open,
-                            window4Open = window4Open
-                        )
+                        MainContent(uiState = uiState)
                     }
                 }
             }
@@ -148,16 +149,20 @@ class MainActivity : ComponentActivity() {
 
             override fun onSuccess(asyncActionToken: IMqttToken?) {
                 Log.i(TAG, "Connection succeeded")
-                statusMessageState.value = "connected"
-                connectedState.value = true
+
+                uiState.value = uiState.value.copy(
+                    statusMessage = "Connected",
+                    connected = true
+                )
                 subscribe()
             }
 
             override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                 Log.e(TAG, "Connection failed", exception)
-                statusMessageState.value = "connection failed"
-                connectedState.value = false
-
+                uiState.value = uiState.value.copy(
+                    statusMessage = "Connection failed",
+                    connected = false
+                )
                 mainHandler.postDelayed({ connect() }, 10000)
             }
         })
@@ -176,12 +181,16 @@ class MainActivity : ComponentActivity() {
 
             override fun onSuccess(asyncActionToken: IMqttToken?) {
                 Log.i(TAG, "Subscribe succeeded")
-                statusMessageState.value = "subscribed"
+                uiState.value = uiState.value.copy(
+                    statusMessage = "Subscribed"
+                )
             }
 
             override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                 Log.e(TAG, "Subscribe failed", exception)
-                statusMessageState.value = "subscribe failed"
+                uiState.value = uiState.value.copy(
+                    statusMessage = "Subscribe failed"
+                )
             }
         })
     }
@@ -192,15 +201,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MainContent(
-    statusMessage: String,
-    connected: Boolean,
-    messageCount: Int,
-    window1Open: Boolean?,
-    window2Open: Boolean?,
-    window3Open: Boolean?,
-    window4Open: Boolean?
-) {
+private fun MainContent(uiState: UiState) {
     Image(
         painter = painterResource(id = R.mipmap.office),
         contentDescription = "office",
@@ -212,26 +213,20 @@ private fun MainContent(
             .fillMaxSize()
             .alpha(0.6f)
     ) {
-        TopBar(statusMessage = statusMessage, messageCount = messageCount)
+        TopBar(statusMessage = uiState.statusMessage, messageCount = uiState.messageCount)
         Row(modifier = Modifier.weight(1f, true)) {
-            Curtain(state = window1Open)
+            Curtain(state = uiState.window1Open)
             Spacer(modifier = Modifier.width(2.dp))
-            Curtain(state = window2Open)
+            Curtain(state = uiState.window2Open)
             Spacer(modifier = Modifier.width(2.dp))
-            Curtain(state = window3Open)
+            Curtain(state = uiState.window3Open)
             Spacer(modifier = Modifier.width(2.dp))
-            Curtain(state = window4Open)
+            Curtain(state = uiState.window4Open)
         }
         BottomBar()
     }
 
-    MessageOverlay(
-        connected = connected,
-        window1Open = window1Open,
-        window2Open = window2Open,
-        window3Open = window3Open,
-        window4Open = window4Open
-    )
+    MessageOverlay(uiState)
 }
 
 @Composable
@@ -265,28 +260,17 @@ private fun RowScope.Curtain(state: Boolean?) {
 }
 
 @Composable
-private fun MessageOverlay(
-    connected: Boolean,
-    window1Open: Boolean?,
-    window2Open: Boolean?,
-    window3Open: Boolean?,
-    window4Open: Boolean?
-) {
+private fun MessageOverlay(uiState: UiState) {
     Box(modifier = Modifier.fillMaxSize()) {
-        val incompleteSensorData =
-            window1Open == null || window2Open == null || window3Open == null || window4Open == null
-        val anyWindowIsOpen =
-            window1Open == true || window2Open == true || window3Open == true || window4Open == true
-
         val text: String
         val bgColor: Color
-        if (!connected) {
+        if (!uiState.connected) {
             text = "MQTT not connected"
             bgColor = GrayTranslucent
-        } else if (anyWindowIsOpen) {
+        } else if (uiState.anyWindowIsOpen) {
             text = "Windows are open"
             bgColor = RedTranslucent
-        } else if (incompleteSensorData) {
+        } else if (uiState.incompleteSensorData) {
             text = "Incomplete sensor data"
             bgColor = GrayTranslucent
         } else {
@@ -327,13 +311,15 @@ private fun BottomBar() {
 @Composable
 fun MainContentPreviewOk() {
     MainContent(
-        statusMessage = "subscribed",
-        connected = true,
-        messageCount = 1234,
-        window1Open = false,
-        window2Open = false,
-        window3Open = false,
-        window4Open = false
+        UiState(
+            statusMessage = "subscribed",
+            connected = true,
+            messageCount = 1234,
+            window1Open = false,
+            window2Open = false,
+            window3Open = false,
+            window4Open = false
+        )
     )
 }
 
@@ -341,13 +327,15 @@ fun MainContentPreviewOk() {
 @Composable
 fun MainContentPreviewNotConnected() {
     MainContent(
-        statusMessage = "connection lost",
-        connected = false,
-        messageCount = 1234,
-        window1Open = false,
-        window2Open = false,
-        window3Open = false,
-        window4Open = false
+        UiState(
+            statusMessage = "connection lost",
+            connected = false,
+            messageCount = 1234,
+            window1Open = false,
+            window2Open = false,
+            window3Open = false,
+            window4Open = false
+        )
     )
 }
 
@@ -355,12 +343,14 @@ fun MainContentPreviewNotConnected() {
 @Composable
 fun MainContentPreviewWindowOpen() {
     MainContent(
-        statusMessage = "subscribed",
-        connected = true,
-        messageCount = 1234,
-        window1Open = true,
-        window2Open = false,
-        window3Open = false,
-        window4Open = false
+        UiState(
+            statusMessage = "subscribed",
+            connected = true,
+            messageCount = 1234,
+            window1Open = true,
+            window2Open = false,
+            window3Open = false,
+            window4Open = false
+        )
     )
 }
